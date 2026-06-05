@@ -11,10 +11,13 @@ class SummaryWidget extends StatefulWidget {
 class _SummaryWidgetState extends State<SummaryWidget> {
   int _totalUsers = 0;
   int _dailyActiveUsers = 0;
+  int _usageDays = 0;
+  int _dailyUserMessages = 0;
   int _totalUserMessages = 0;
   int _apiReplies = 0;
   int _localReplies = 0;
   int _apiCallCount = 0;
+  int _dailyTokens = 0;
   int _totalTokens = 0;
   int _totalCostWon = 0;
   bool _isLoading = true;
@@ -29,16 +32,23 @@ class _SummaryWidgetState extends State<SummaryWidget> {
     try {
       final total = await AdminService.getTotalUsers();
       final dau = await AdminService.getDailyActiveUsers();
+      final usageDays = await AdminService.getUsageDayCount();
       final apiStats = await AdminService.getApiCostStats();
+      final dailyApiStats = await AdminService.getDailyApiCostStats();
       final conversationStats = await AdminService.getConversationUsageStats();
+      final dailyConversationStats =
+          await AdminService.getDailyConversationUsageStats();
 
       setState(() {
         _totalUsers = total;
         _dailyActiveUsers = dau;
+        _usageDays = usageDays;
+        _dailyUserMessages = dailyConversationStats['totalUserMessages'] ?? 0;
         _totalUserMessages = conversationStats['totalUserMessages'] ?? 0;
         _apiReplies = conversationStats['apiReplies'] ?? 0;
         _localReplies = conversationStats['localReplies'] ?? 0;
         _apiCallCount = apiStats['apiCallCount'] ?? 0;
+        _dailyTokens = dailyApiStats['totalTokens'] ?? 0;
         _totalTokens = apiStats['totalTokens'] ?? 0;
         _totalCostWon = apiStats['totalCostWon'] ?? 0;
         _isLoading = false;
@@ -61,6 +71,9 @@ class _SummaryWidgetState extends State<SummaryWidget> {
     final retentionRate = _totalUsers > 0
         ? (_dailyActiveUsers / _totalUsers * 100).toStringAsFixed(1)
         : '0.0';
+    final costPerTester = _totalUsers > 0
+        ? (_totalCostWon / _totalUsers).round()
+        : 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,9 +104,16 @@ class _SummaryWidgetState extends State<SummaryWidget> {
         Row(
           children: [
             _buildStatCard(
+              '일별 사용자 메시지',
+              '$_dailyUserMessages 회',
+              Icons.today_outlined,
+            ),
+            const SizedBox(width: 16),
+            _buildStatCard(
               '누적 사용자 메시지',
               '$_totalUserMessages 회',
               Icons.chat_bubble_outline,
+              subtitle: '사용일수 $_usageDays일',
             ),
             const SizedBox(width: 16),
             _buildStatCard(
@@ -112,15 +132,15 @@ class _SummaryWidgetState extends State<SummaryWidget> {
               '누적 토큰',
               '${_formatNumber(_totalTokens)} tokens',
               Icons.data_usage,
+              subtitle: '오늘 ${_formatNumber(_dailyTokens)} tokens',
             ),
             const SizedBox(width: 16),
             _buildStatCard(
-              '예상 API 비용',
-              '${_formatNumber(_totalCostWon)} 원',
+              '예상 API 비용 / 테스터',
+              '${_formatNumber(costPerTester)} 원',
               Icons.payments_outlined,
+              subtitle: '총 ${_formatNumber(_totalCostWon)}원',
             ),
-            const SizedBox(width: 16),
-            const Spacer(),
           ],
         ),
         const SizedBox(height: 48),
@@ -165,7 +185,12 @@ class _SummaryWidgetState extends State<SummaryWidget> {
     return buffer.toString();
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon, {
+    String? subtitle,
+  }) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(24),
@@ -202,6 +227,17 @@ class _SummaryWidgetState extends State<SummaryWidget> {
               value,
               style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ],
         ),
       ),

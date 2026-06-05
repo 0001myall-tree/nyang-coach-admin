@@ -3,6 +3,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class AdminService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  static String _dateKey(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  static int _readInt(Map<String, dynamic> data, String key) {
+    final value = data[key];
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return 0;
+  }
+
   // 전체 유저 수 가져오기
   static Future<int> getTotalUsers() async {
     final snapshot = await _firestore.collection('users').count().get();
@@ -11,9 +22,7 @@ class AdminService {
 
   // 오늘 접속한 유저 수 (DAU)
   static Future<int> getDailyActiveUsers() async {
-    final now = DateTime.now();
-    final todayStr =
-        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final todayStr = _dateKey(DateTime.now());
 
     final doc = await _firestore
         .collection('analytics')
@@ -26,6 +35,12 @@ class AdminService {
     if (activeUsers is List) return activeUsers.length;
 
     return 0;
+  }
+
+  // 실제 접속 기록이 있는 날짜 수
+  static Future<int> getUsageDayCount() async {
+    final snapshot = await _firestore.collection('analytics').get();
+    return snapshot.docs.where((doc) => doc.id.startsWith('dau_')).length;
   }
 
   // 코치별 사용 비율 가져오기
@@ -74,19 +89,31 @@ class AdminService {
       return {'totalTokens': 0, 'totalCostWon': 0, 'apiCallCount': 0};
     }
 
-    int readInt(String key) {
-      final value = data[key];
-      if (value is int) return value;
-      if (value is num) return value.toInt();
-      return 0;
+    return {
+      'totalTokens': _readInt(data, 'totalTokens'),
+      'totalCostWon': _readInt(data, 'totalCostWon'),
+      'apiCallCount': _readInt(data, 'apiCallCount') > 0
+          ? _readInt(data, 'apiCallCount')
+          : _readInt(data, 'chatCount'),
+    };
+  }
+
+  // 오늘 API 사용량 가져오기
+  static Future<Map<String, int>> getDailyApiCostStats() async {
+    final todayStr = _dateKey(DateTime.now());
+    final doc = await _firestore
+        .collection('analytics')
+        .doc('api_costs_daily_$todayStr')
+        .get();
+    final data = doc.data();
+    if (data == null) {
+      return {'totalTokens': 0, 'totalCostWon': 0, 'apiCallCount': 0};
     }
 
     return {
-      'totalTokens': readInt('totalTokens'),
-      'totalCostWon': readInt('totalCostWon'),
-      'apiCallCount': readInt('apiCallCount') > 0
-          ? readInt('apiCallCount')
-          : readInt('chatCount'),
+      'totalTokens': _readInt(data, 'totalTokens'),
+      'totalCostWon': _readInt(data, 'totalCostWon'),
+      'apiCallCount': _readInt(data, 'apiCallCount'),
     };
   }
 
@@ -106,18 +133,36 @@ class AdminService {
       };
     }
 
-    int readInt(String key) {
-      final value = data[key];
-      if (value is int) return value;
-      if (value is num) return value.toInt();
-      return 0;
+    return {
+      'totalUserMessages': _readInt(data, 'totalUserMessages'),
+      'totalCoachReplies': _readInt(data, 'totalCoachReplies'),
+      'apiReplies': _readInt(data, 'apiReplies'),
+      'localReplies': _readInt(data, 'localReplies'),
+    };
+  }
+
+  // 오늘 대화량 가져오기
+  static Future<Map<String, int>> getDailyConversationUsageStats() async {
+    final todayStr = _dateKey(DateTime.now());
+    final doc = await _firestore
+        .collection('analytics')
+        .doc('conversation_usage_daily_$todayStr')
+        .get();
+    final data = doc.data();
+    if (data == null) {
+      return {
+        'totalUserMessages': 0,
+        'totalCoachReplies': 0,
+        'apiReplies': 0,
+        'localReplies': 0,
+      };
     }
 
     return {
-      'totalUserMessages': readInt('totalUserMessages'),
-      'totalCoachReplies': readInt('totalCoachReplies'),
-      'apiReplies': readInt('apiReplies'),
-      'localReplies': readInt('localReplies'),
+      'totalUserMessages': _readInt(data, 'totalUserMessages'),
+      'totalCoachReplies': _readInt(data, 'totalCoachReplies'),
+      'apiReplies': _readInt(data, 'apiReplies'),
+      'localReplies': _readInt(data, 'localReplies'),
     };
   }
 
