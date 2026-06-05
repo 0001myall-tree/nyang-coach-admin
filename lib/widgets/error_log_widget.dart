@@ -1,16 +1,50 @@
 import 'package:flutter/material.dart';
+import '../services/admin_service.dart';
+import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class ErrorLogWidget extends StatelessWidget {
+class ErrorLogWidget extends StatefulWidget {
   const ErrorLogWidget({super.key});
 
   @override
+  State<ErrorLogWidget> createState() => _ErrorLogWidgetState();
+}
+
+class _ErrorLogWidgetState extends State<ErrorLogWidget> {
+  List<Map<String, dynamic>> _errorData = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final data = await AdminService.getRecentErrors();
+      setState(() {
+        _errorData = data;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  String _formatTime(dynamic timestamp) {
+    if (timestamp == null) return '';
+    if (timestamp is Timestamp) {
+      return DateFormat('MM/dd HH:mm').format(timestamp.toDate());
+    }
+    return '';
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // 임시 에러 데이터
-    final List<Map<String, dynamic>> errorData = [
-      {'time': '2026-06-05 19:30:12', 'type': 'System', 'message': 'Firebase connection timeout', 'user': 'N/A'},
-      {'time': '2026-06-05 18:45:00', 'type': 'AI API', 'message': 'Gemini API Rate Limit Exceeded', 'user': 'tester1@email.com'},
-      {'time': '2026-06-05 14:20:33', 'type': 'System', 'message': 'Audio player failed to load asset', 'user': 'tester2@email.com'},
-    ];
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -34,38 +68,24 @@ class ErrorLogWidget extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           Expanded(
-            child: SingleChildScrollView(
+            child: _errorData.isEmpty
+              ? const Center(child: Text('발생한 에러가 없습니다!', style: TextStyle(color: Colors.grey)))
+              : SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 headingRowColor: MaterialStateProperty.all(const Color(0xFFF0F2F5)),
                 columns: const [
                   DataColumn(label: Text('발생 시간', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('타입', style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text('유저 ID', style: TextStyle(fontWeight: FontWeight.bold))),
                   DataColumn(label: Text('에러 메시지', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('관련 유저', style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text('관련 컨텍스트', style: TextStyle(fontWeight: FontWeight.bold))),
                 ],
-                rows: errorData.map((e) => DataRow(
+                rows: _errorData.map((e) => DataRow(
                   cells: [
-                    DataCell(Text(e['time'])),
-                    DataCell(
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: e['type'] == 'AI API' ? Colors.orange.withOpacity(0.2) : Colors.red.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          e['type'],
-                          style: TextStyle(
-                            color: e['type'] == 'AI API' ? Colors.orange[800] : Colors.red[800],
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      )
-                    ),
-                    DataCell(Text(e['message'])),
-                    DataCell(Text(e['user'])),
+                    DataCell(Text(_formatTime(e['timestamp']))),
+                    DataCell(Text(e['uid']?.toString() ?? 'anonymous')),
+                    DataCell(Text(e['errorMessage']?.toString() ?? '알 수 없는 에러')),
+                    DataCell(Text(e['context']?.toString() ?? '')),
                   ],
                 )).toList(),
               ),
@@ -76,3 +96,4 @@ class ErrorLogWidget extends StatelessWidget {
     );
   }
 }
+

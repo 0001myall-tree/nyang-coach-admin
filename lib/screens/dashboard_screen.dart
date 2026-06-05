@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/summary_widget.dart';
 import '../widgets/usage_chart_widget.dart';
 import '../widgets/timeline_widget.dart';
@@ -71,10 +72,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const CircleAvatar(
-                        backgroundColor: Color(0xFF6B5EA8),
-                        child: Icon(Icons.person, color: Colors.white),
-                      )
+                      IconButton(
+                        tooltip: '로그아웃',
+                        onPressed: () => FirebaseAuth.instance.signOut(),
+                        icon: const CircleAvatar(
+                          backgroundColor: Color(0xFF6B5EA8),
+                          child: Icon(Icons.logout, color: Colors.white),
+                        ),
+                      ),
                     ],
                   ),
                 ),

@@ -11,6 +11,7 @@ class UsageChartWidget extends StatefulWidget {
 
 class _UsageChartWidgetState extends State<UsageChartWidget> {
   Map<String, int> _coachStats = {};
+  Map<String, int> _featureStats = {};
   bool _isLoading = true;
 
   @override
@@ -22,8 +23,10 @@ class _UsageChartWidgetState extends State<UsageChartWidget> {
   Future<void> _loadData() async {
     try {
       final stats = await AdminService.getCoachUsageStats();
+      final featureStats = await AdminService.getFeatureUsageStats();
       setState(() {
         _coachStats = stats;
+        _featureStats = featureStats;
         _isLoading = false;
       });
     } catch (e) {
@@ -51,7 +54,7 @@ class _UsageChartWidgetState extends State<UsageChartWidget> {
                   color: Colors.black.withOpacity(0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
-                )
+                ),
               ],
             ),
             child: Column(
@@ -63,7 +66,7 @@ class _UsageChartWidgetState extends State<UsageChartWidget> {
                 ),
                 const SizedBox(height: 24),
                 Expanded(
-                  child: _coachStats.isEmpty 
+                  child: _coachStats.isEmpty
                       ? const Center(child: Text('데이터가 없습니다.'))
                       : PieChart(
                           PieChartData(
@@ -76,8 +79,10 @@ class _UsageChartWidgetState extends State<UsageChartWidget> {
                 // 레전드
                 Wrap(
                   spacing: 16,
-                  children: _coachStats.keys.map((key) => _buildLegend(key)).toList(),
-                )
+                  children: _coachStats.keys
+                      .map((key) => _buildLegend(key))
+                      .toList(),
+                ),
               ],
             ),
           ),
@@ -95,7 +100,7 @@ class _UsageChartWidgetState extends State<UsageChartWidget> {
                   color: Colors.black.withOpacity(0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
-                )
+                ),
               ],
             ),
             child: Column(
@@ -107,34 +112,43 @@ class _UsageChartWidgetState extends State<UsageChartWidget> {
                 ),
                 const SizedBox(height: 24),
                 Expanded(
-                  child: BarChart(
-                    BarChartData(
-                      alignment: BarChartAlignment.spaceAround,
-                      barGroups: [
-                        _makeBarData(0, 45), // 채팅
-                        _makeBarData(1, 20), // 모닝콜
-                        _makeBarData(2, 35), // 할일 관리
-                        _makeBarData(3, 10), // 통계 확인
-                      ],
-                      titlesData: FlTitlesData(
-                        show: true,
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (double value, TitleMeta meta) {
-                              switch (value.toInt()) {
-                                case 0: return const Text('AI 채팅');
-                                case 1: return const Text('모닝콜');
-                                case 2: return const Text('할일');
-                                case 3: return const Text('통계');
-                                default: return const Text('');
-                              }
-                            },
+                  child: _featureStats.isEmpty
+                      ? const Center(child: Text('데이터가 없습니다.'))
+                      : BarChart(
+                          BarChartData(
+                            alignment: BarChartAlignment.spaceAround,
+                            barGroups: _getFeatureBarGroups(),
+                            titlesData: FlTitlesData(
+                              show: true,
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 42,
+                                  getTitlesWidget:
+                                      (double value, TitleMeta meta) {
+                                        final labels = _featureLabels;
+                                        final index = value.toInt();
+                                        if (index < 0 ||
+                                            index >= labels.length) {
+                                          return const Text('');
+                                        }
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 8,
+                                          ),
+                                          child: Text(
+                                            _featureDisplayName(labels[index]),
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                  ),
                 ),
               ],
             ),
@@ -145,7 +159,12 @@ class _UsageChartWidgetState extends State<UsageChartWidget> {
   }
 
   List<PieChartSectionData> _getPieSections() {
-    final colors = [const Color(0xFF6B5EA8), const Color(0xFFE5B94A), Colors.green, Colors.blue];
+    final colors = [
+      const Color(0xFF6B5EA8),
+      const Color(0xFFE5B94A),
+      Colors.green,
+      Colors.blue,
+    ];
     int index = 0;
     return _coachStats.entries.map((entry) {
       final color = colors[index % colors.length];
@@ -155,16 +174,53 @@ class _UsageChartWidgetState extends State<UsageChartWidget> {
         value: entry.value.toDouble(),
         title: '${entry.value}명',
         radius: 60,
-        titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+        titleStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
       );
     }).toList();
+  }
+
+  List<String> get _featureLabels => _featureStats.keys.toList();
+
+  List<BarChartGroupData> _getFeatureBarGroups() {
+    final entries = _featureStats.entries.toList();
+    return List.generate(entries.length, (index) {
+      return _makeBarData(index, entries[index].value.toDouble());
+    });
+  }
+
+  String _featureDisplayName(String featureName) {
+    switch (featureName) {
+      case 'morning_call':
+        return '모닝콜';
+      case 'core_reminder':
+        return '핵심 리마인더';
+      case 'night_call':
+        return '나이트콜';
+      case 'chat':
+        return 'AI 채팅';
+      case 'tasks':
+        return '할일';
+      default:
+        return featureName;
+    }
   }
 
   Widget _buildLegend(String title) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 12, height: 12, decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.grey)),
+        Container(
+          width: 12,
+          height: 12,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.grey,
+          ),
+        ),
         const SizedBox(width: 4),
         Text(title),
       ],

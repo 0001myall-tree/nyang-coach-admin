@@ -11,6 +11,12 @@ class SummaryWidget extends StatefulWidget {
 class _SummaryWidgetState extends State<SummaryWidget> {
   int _totalUsers = 0;
   int _dailyActiveUsers = 0;
+  int _totalUserMessages = 0;
+  int _apiReplies = 0;
+  int _localReplies = 0;
+  int _apiCallCount = 0;
+  int _totalTokens = 0;
+  int _totalCostWon = 0;
   bool _isLoading = true;
 
   @override
@@ -23,10 +29,18 @@ class _SummaryWidgetState extends State<SummaryWidget> {
     try {
       final total = await AdminService.getTotalUsers();
       final dau = await AdminService.getDailyActiveUsers();
-      
+      final apiStats = await AdminService.getApiCostStats();
+      final conversationStats = await AdminService.getConversationUsageStats();
+
       setState(() {
         _totalUsers = total;
         _dailyActiveUsers = dau;
+        _totalUserMessages = conversationStats['totalUserMessages'] ?? 0;
+        _apiReplies = conversationStats['apiReplies'] ?? 0;
+        _localReplies = conversationStats['localReplies'] ?? 0;
+        _apiCallCount = apiStats['apiCallCount'] ?? 0;
+        _totalTokens = apiStats['totalTokens'] ?? 0;
+        _totalCostWon = apiStats['totalCostWon'] ?? 0;
         _isLoading = false;
       });
     } catch (e) {
@@ -44,8 +58,8 @@ class _SummaryWidgetState extends State<SummaryWidget> {
     }
 
     // 재방문률 (단순 계산)
-    final retentionRate = _totalUsers > 0 
-        ? (_dailyActiveUsers / _totalUsers * 100).toStringAsFixed(1) 
+    final retentionRate = _totalUsers > 0
+        ? (_dailyActiveUsers / _totalUsers * 100).toStringAsFixed(1)
         : '0.0';
 
     return Column(
@@ -60,9 +74,53 @@ class _SummaryWidgetState extends State<SummaryWidget> {
           children: [
             _buildStatCard('총 가입 테스터', '$_totalUsers 명', Icons.people),
             const SizedBox(width: 16),
-            _buildStatCard('오늘 접속한 테스터 (DAU)', '$_dailyActiveUsers 명', Icons.directions_run),
+            _buildStatCard(
+              '오늘 접속한 테스터 (DAU)',
+              '$_dailyActiveUsers 명',
+              Icons.directions_run,
+            ),
             const SizedBox(width: 16),
-            _buildStatCard('재방문률 (Retention)', '$retentionRate %', Icons.trending_up),
+            _buildStatCard(
+              '재방문률 (Retention)',
+              '$retentionRate %',
+              Icons.trending_up,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            _buildStatCard(
+              '누적 사용자 메시지',
+              '$_totalUserMessages 회',
+              Icons.chat_bubble_outline,
+            ),
+            const SizedBox(width: 16),
+            _buildStatCard(
+              'API 응답 / 로컬 응답',
+              '$_apiReplies / $_localReplies',
+              Icons.compare_arrows,
+            ),
+            const SizedBox(width: 16),
+            _buildStatCard('API 호출', '$_apiCallCount 회', Icons.cloud_outlined),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            _buildStatCard(
+              '누적 토큰',
+              '${_formatNumber(_totalTokens)} tokens',
+              Icons.data_usage,
+            ),
+            const SizedBox(width: 16),
+            _buildStatCard(
+              '예상 API 비용',
+              '${_formatNumber(_totalCostWon)} 원',
+              Icons.payments_outlined,
+            ),
+            const SizedBox(width: 16),
+            const Spacer(),
           ],
         ),
         const SizedBox(height: 48),
@@ -79,7 +137,7 @@ class _SummaryWidgetState extends State<SummaryWidget> {
                   color: Colors.black.withOpacity(0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
-                )
+                ),
               ],
             ),
             child: const Center(
@@ -89,9 +147,22 @@ class _SummaryWidgetState extends State<SummaryWidget> {
               ),
             ),
           ),
-        )
+        ),
       ],
     );
+  }
+
+  String _formatNumber(int value) {
+    final text = value.toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < text.length; i++) {
+      final remaining = text.length - i;
+      buffer.write(text[i]);
+      if (remaining > 1 && remaining % 3 == 1) {
+        buffer.write(',');
+      }
+    }
+    return buffer.toString();
   }
 
   Widget _buildStatCard(String title, String value, IconData icon) {
@@ -106,7 +177,7 @@ class _SummaryWidgetState extends State<SummaryWidget> {
               color: Colors.black.withOpacity(0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
-            )
+            ),
           ],
         ),
         child: Column(
@@ -118,7 +189,11 @@ class _SummaryWidgetState extends State<SummaryWidget> {
                 const SizedBox(width: 8),
                 Text(
                   title,
-                  style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
