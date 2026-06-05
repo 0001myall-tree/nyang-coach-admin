@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../models/user_data.dart';
+import '../widgets/summary_widget.dart';
+import '../widgets/usage_chart_widget.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -11,147 +10,124 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  Future<void> _updatePlan(String uid, UserData userData, String newPlan) async {
-    userData.planType = newPlan;
-    if (newPlan == 'none') {
-      userData.planExpiresAt = null;
-    } else {
-      userData.planExpiresAt = DateTime.now().add(const Duration(days: 30)); // 기본 30일
-    }
-    
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({
-      'userData': userData.toJson(),
-    }, SetOptions(merge: true));
-  }
+  int _selectedIndex = 0;
 
-  Future<void> _addPoints(String uid, UserData userData, int pointsToAdd) async {
-    userData.points += pointsToAdd;
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({
-      'userData': userData.toJson(),
-    }, SetOptions(merge: true));
-  }
-
-  void _showEditDialog(String uid, UserData userData) {
-    final pointsController = TextEditingController(text: userData.points.toString());
-    String selectedPlan = userData.planType;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('유저 정보 수정'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('유저 ID: $uid', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: selectedPlan,
-                items: const [
-                  DropdownMenuItem(value: 'none', child: Text('무료 (none)')),
-                  DropdownMenuItem(value: 'friends', child: Text('프렌즈 (friends)')),
-                  DropdownMenuItem(value: 'master', child: Text('마스터 (master)')),
-                ],
-                onChanged: (val) {
-                  if (val != null) setState(() => selectedPlan = val);
-                },
-                decoration: const InputDecoration(labelText: '구독 플랜'),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: pointsController,
-                decoration: const InputDecoration(labelText: '보유 포인트'),
-                keyboardType: TextInputType.number,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('취소'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                userData.planType = selectedPlan;
-                userData.points = int.tryParse(pointsController.text) ?? userData.points;
-                await FirebaseFirestore.instance.collection('users').doc(uid).set({
-                  'userData': userData.toJson(),
-                }, SetOptions(merge: true));
-                if (mounted) Navigator.pop(context);
-              },
-              child: const Text('저장'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  final List<String> _menuTitles = [
+    '종합 요약',
+    '코치 및 기능 사용량',
+    '테스터 활동 및 타임라인',
+    '에러 로그',
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('냥냥코치 관리자 대시보드', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF8B7CFF),
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => FirebaseAuth.instance.signOut(),
-          ),
-        ],
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('users').snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('데이터를 불러오는데 실패했습니다: ${snapshot.error}'));
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final users = snapshot.data!.docs;
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: users.length,
-            itemBuilder: (context, index) {
-              final doc = users[index];
-              final data = doc.data() as Map<String, dynamic>;
-              
-              UserData userData = UserData();
-              if (data.containsKey('userData')) {
-                userData = UserData.fromJson(data['userData']);
-              }
-
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  title: Text(data['email'] ?? '이메일 없음 (UID: ${doc.id})', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(
-                    '플랜: ${userData.planType} | 포인트: ${userData.points} | 보유 코치: ${userData.ownedCoaches.join(', ')}',
+      backgroundColor: const Color(0xFFF0F2F5),
+      body: Row(
+        children: [
+          // 사이드바
+          Container(
+            width: 250,
+            color: Colors.white,
+            child: Column(
+              children: [
+                const SizedBox(height: 32),
+                const Text(
+                  '냥냥코치\nAdmin Dashboard',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF6B5EA8),
                   ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
+                ),
+                const SizedBox(height: 48),
+                _buildMenuItem(Icons.dashboard, '종합 요약', 0),
+                _buildMenuItem(Icons.pie_chart, '코치 및 기능 사용량', 1),
+                _buildMenuItem(Icons.people, '테스터 활동 및 타임라인', 2),
+                _buildMenuItem(Icons.error_outline, '에러 로그', 3),
+              ],
+            ),
+          ),
+          const VerticalDivider(width: 1, color: Colors.black12),
+          // 메인 컨텐츠 영역
+          Expanded(
+            child: Column(
+              children: [
+                // 앱바/헤더
+                Container(
+                  height: 60,
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      ElevatedButton(
-                        onPressed: () => _addPoints(doc.id, userData, 100),
-                        child: const Text('+100P'),
+                      Text(
+                        _menuTitles[_selectedIndex],
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: () => _showEditDialog(doc.id, userData),
-                        child: const Text('상세 수정'),
-                      ),
+                      const CircleAvatar(
+                        backgroundColor: Color(0xFF6B5EA8),
+                        child: Icon(Icons.person, color: Colors.white),
+                      )
                     ],
                   ),
                 ),
-              );
-            },
-          );
-        },
+                const Divider(height: 1, color: Colors.black12),
+                // 화면 내용
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: _buildContent(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  Widget _buildMenuItem(IconData icon, String title, int index) {
+    final isSelected = _selectedIndex == index;
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: isSelected ? const Color(0xFF6B5EA8) : Colors.grey,
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? const Color(0xFF6B5EA8) : Colors.grey[800],
+        ),
+      ),
+      selected: isSelected,
+      selectedTileColor: const Color(0xFF6B5EA8).withOpacity(0.1),
+      onTap: () {
+        setState(() {
+          _selectedIndex = index;
+        });
+      },
+    );
+  }
+
+  Widget _buildContent() {
+    switch (_selectedIndex) {
+      case 0:
+        return const SummaryWidget();
+      case 1:
+        return const UsageChartWidget();
+      case 2:
+        return const Center(child: Text('테스터 활동 타임라인 및 비용 내역 예정'));
+      case 3:
+        return const Center(child: Text('시스템 및 채팅 에러 로그 예정'));
+      default:
+        return const SizedBox.shrink();
+    }
   }
 }

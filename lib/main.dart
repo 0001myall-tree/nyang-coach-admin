@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'firebase_options.dart';
-import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 
 void main() async {
@@ -10,47 +9,22 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const AdminApp());
+  runApp(const NyangAdminApp());
 }
 
-class AdminApp extends StatelessWidget {
-  const AdminApp({super.key});
+class NyangAdminApp extends StatelessWidget {
+  const NyangAdminApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Nyang Coach Admin',
+      title: '냥냥코치 어드민',
       theme: ThemeData(
-        primaryColor: const Color(0xFF8B7CFF),
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF8B7CFF)),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6B5EA8)),
+        textTheme: GoogleFonts.notoSansKrTextTheme(Theme.of(context).textTheme),
         useMaterial3: true,
       ),
-      home: const AuthGate(),
-    );
-  }
-}
-
-class AuthGate extends StatelessWidget {
-  const AuthGate({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        
-        final user = snapshot.data;
-        if (user == null) {
-          return const LoginScreen();
-        }
-        
-        return const DashboardScreen();
-      },
+      home: const DashboardScreen(),
     );
   }
 }
