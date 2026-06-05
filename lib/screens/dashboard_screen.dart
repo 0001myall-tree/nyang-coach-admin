@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../widgets/summary_widget.dart';
 import '../widgets/usage_chart_widget.dart';
+import '../widgets/timeline_widget.dart';
+import '../widgets/error_log_widget.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -123,9 +125,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 1:
         return const UsageChartWidget();
       case 2:
-        return const Center(child: Text('테스터 활동 타임라인 및 비용 내역 예정'));
+        return const TimelineWidget();
       case 3:
-        return const Center(child: Text('시스템 및 채팅 에러 로그 예정'));
+        return const ErrorLogWidget();
       default:
         return const SizedBox.shrink();
     }
