@@ -113,22 +113,24 @@ class _TesterUsageWidgetState extends State<TesterUsageWidget> {
                             DataColumn(label: Text('코치')),
                             DataColumn(label: Text('가입 후')),
                             DataColumn(label: Text('사용일수')),
-                            DataColumn(label: Text('오늘 핵심 추천(오늘/누적)')),
-                            DataColumn(label: Text('일정 에스코트(오늘/누적)')),
-                            DataColumn(label: Text('비전 오늘(오늘/누적)')),
-                            DataColumn(label: Text('모닝콜(오늘/누적)')),
-                            DataColumn(label: Text('나이트콜(오늘/누적)')),
-                            DataColumn(label: Text('리마인더(오늘/누적)')),
                             DataColumn(label: Text('오늘 메시지')),
                             DataColumn(label: Text('누적 메시지')),
                             DataColumn(label: Text('오늘 API/로컬')),
                             DataColumn(label: Text('누적 API/로컬')),
+                            DataColumn(label: Text('오늘 API 호출')),
+                            DataColumn(label: Text('누적 API 호출')),
                             DataColumn(label: Text('오늘 토큰')),
                             DataColumn(label: Text('누적 토큰')),
                             DataColumn(label: Text('오늘 비용')),
                             DataColumn(label: Text('누적 비용')),
                             DataColumn(label: Text('가입일 평균')),
                             DataColumn(label: Text('사용일 평균')),
+                            DataColumn(label: Text('오늘 핵심 추천(오늘/누적)')),
+                            DataColumn(label: Text('일정 에스코트(오늘/누적)')),
+                            DataColumn(label: Text('비전 오늘(오늘/누적)')),
+                            DataColumn(label: Text('모닝콜(오늘/누적)')),
+                            DataColumn(label: Text('나이트콜(오늘/누적)')),
+                            DataColumn(label: Text('리마인더(오늘/누적)')),
                             DataColumn(label: Text('마지막 접속')),
                           ],
                           rows: _rows.map(_buildRow).toList(),
@@ -155,6 +157,30 @@ class _TesterUsageWidgetState extends State<TesterUsageWidget> {
         DataCell(Text(_coachLabel(row['coachId']))),
         DataCell(Text(_daysLabel(row['daysSinceJoined']))),
         DataCell(Text(_daysLabel(row['activeDays']))),
+        DataCell(Text('${_int(row['todayUserMessages'])}회')),
+        DataCell(
+          Text(
+            '${_formatNumber(_int(row['totalUserMessages']))}회\n'
+            '가입일 ${_decimal(row['avgMessagesSinceJoin'])}회/일\n'
+            '사용일 ${_decimal(row['avgMessagesPerActiveDay'])}회/일',
+          ),
+        ),
+        DataCell(
+          Text(
+            '${_int(row['todayApiReplies'])} / ${_int(row['todayLocalReplies'])}',
+          ),
+        ),
+        DataCell(
+          Text('${_int(row['apiReplies'])} / ${_int(row['localReplies'])}'),
+        ),
+        DataCell(Text('${_int(row['todayApiCalls'])}회')),
+        DataCell(Text('${_int(row['apiCallCount'])}회')),
+        DataCell(Text('${_formatNumber(_int(row['todayTokens']))} tokens')),
+        DataCell(Text('${_formatNumber(_int(row['totalTokens']))} tokens')),
+        DataCell(Text('${_formatNumber(_int(row['todayCostWon']))}원')),
+        DataCell(Text('${_formatNumber(_int(row['totalCostWon']))}원')),
+        DataCell(Text('${_formatWon(row['avgCostSinceJoin'])}/일')),
+        DataCell(Text('${_formatWon(row['avgCostPerActiveDay'])}/일')),
         DataCell(
           Text(
             '${_int(row['featCoreRecToday'])} / ${_int(row['featCoreRecTotal'])}',
@@ -185,28 +211,6 @@ class _TesterUsageWidgetState extends State<TesterUsageWidget> {
             '${_int(row['featReminderToday'])} / ${_int(row['featReminderTotal'])}',
           ),
         ),
-        DataCell(Text('${_int(row['todayUserMessages'])}회')),
-        DataCell(
-          Text(
-            '${_formatNumber(_int(row['totalUserMessages']))}회\n'
-            '가입일 ${_decimal(row['avgMessagesSinceJoin'])}회/일\n'
-            '사용일 ${_decimal(row['avgMessagesPerActiveDay'])}회/일',
-          ),
-        ),
-        DataCell(
-          Text(
-            '${_int(row['todayApiReplies'])} / ${_int(row['todayLocalReplies'])}',
-          ),
-        ),
-        DataCell(
-          Text('${_int(row['apiReplies'])} / ${_int(row['localReplies'])}'),
-        ),
-        DataCell(Text('${_formatNumber(_int(row['todayTokens']))} tokens')),
-        DataCell(Text('${_formatNumber(_int(row['totalTokens']))} tokens')),
-        DataCell(Text('${_formatNumber(_int(row['todayCostWon']))}원')),
-        DataCell(Text('${_formatNumber(_int(row['totalCostWon']))}원')),
-        DataCell(Text('${_formatWon(row['avgCostSinceJoin'])}/일')),
-        DataCell(Text('${_formatWon(row['avgCostPerActiveDay'])}/일')),
         DataCell(Text(_dateLabel(row['lastActiveAt']))),
       ],
     );
