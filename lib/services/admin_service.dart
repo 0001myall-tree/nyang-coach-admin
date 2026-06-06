@@ -123,6 +123,36 @@ class AdminService {
     return stats;
   }
 
+  // 오늘 기능별 사용량 가져오기
+  static Future<Map<String, int>> getDailyFeatureUsageStats() async {
+    final todayStr = _dateKey(DateTime.now());
+    final usersSnapshot = await _firestore.collection('users').get();
+    final Map<String, int> stats = {};
+
+    await Future.wait(
+      usersSnapshot.docs.map((userDoc) async {
+        final dailyDoc = await userDoc.reference
+            .collection('analytics_daily')
+            .doc(todayStr)
+            .get();
+        final data = dailyDoc.data();
+        if (data == null) return;
+
+        final features = data['features'];
+        if (features is! Map) return;
+
+        features.forEach((key, value) {
+          final count = value is num ? value.toInt() : 0;
+          if (count > 0) {
+            stats[key.toString()] = (stats[key.toString()] ?? 0) + count;
+          }
+        });
+      }),
+    );
+
+    return stats;
+  }
+
   // 누적 API 사용량 가져오기
   static Future<Map<String, int>> getApiCostStats() async {
     final doc = await _firestore.collection('analytics').doc('api_costs').get();

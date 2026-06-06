@@ -11,6 +11,7 @@ class UsageChartWidget extends StatefulWidget {
 
 class _UsageChartWidgetState extends State<UsageChartWidget> {
   Map<String, int> _coachStats = {};
+  Map<String, int> _dailyFeatureStats = {};
   Map<String, int> _featureStats = {};
   bool _isLoading = true;
 
@@ -23,9 +24,11 @@ class _UsageChartWidgetState extends State<UsageChartWidget> {
   Future<void> _loadData() async {
     try {
       final stats = await AdminService.getCoachUsageStats();
+      final dailyFeatureStats = await AdminService.getDailyFeatureUsageStats();
       final featureStats = await AdminService.getFeatureUsageStats();
       setState(() {
         _coachStats = stats;
+        _dailyFeatureStats = dailyFeatureStats;
         _featureStats = featureStats;
         _isLoading = false;
       });
@@ -51,7 +54,7 @@ class _UsageChartWidgetState extends State<UsageChartWidget> {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -88,7 +91,7 @@ class _UsageChartWidgetState extends State<UsageChartWidget> {
           ),
         ),
         const SizedBox(width: 24),
-        // 기능별 사용량 바 차트 (임시 데이터)
+        // 기능별 사용량 요약
         Expanded(
           child: Container(
             padding: const EdgeInsets.all(24),
@@ -97,7 +100,7 @@ class _UsageChartWidgetState extends State<UsageChartWidget> {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -107,47 +110,26 @@ class _UsageChartWidgetState extends State<UsageChartWidget> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '기능별 사용 횟수 (오늘)',
+                  '기능별 사용 횟수',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 6),
+                const Text(
+                  '각 기능이 오늘 몇 번 쓰였는지와 지금까지의 누적 횟수를 함께 봅니다.',
+                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                ),
+                const SizedBox(height: 18),
                 Expanded(
                   child: _featureStats.isEmpty
                       ? const Center(child: Text('데이터가 없습니다.'))
-                      : BarChart(
-                          BarChartData(
-                            alignment: BarChartAlignment.spaceAround,
-                            barGroups: _getFeatureBarGroups(),
-                            titlesData: FlTitlesData(
-                              show: true,
-                              bottomTitles: AxisTitles(
-                                sideTitles: SideTitles(
-                                  showTitles: true,
-                                  reservedSize: 42,
-                                  getTitlesWidget:
-                                      (double value, TitleMeta meta) {
-                                        final labels = _featureLabels;
-                                        final index = value.toInt();
-                                        if (index < 0 ||
-                                            index >= labels.length) {
-                                          return const Text('');
-                                        }
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 8,
-                                          ),
-                                          child: Text(
-                                            _featureDisplayName(labels[index]),
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                ),
-                              ),
-                            ),
-                          ),
+                      : ListView.separated(
+                          itemCount: _featureRows.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 10),
+                          itemBuilder: (context, index) {
+                            final featureName = _featureRows[index];
+                            return _buildFeatureRow(featureName);
+                          },
                         ),
                 ),
               ],
@@ -183,13 +165,19 @@ class _UsageChartWidgetState extends State<UsageChartWidget> {
     }).toList();
   }
 
-  List<String> get _featureLabels => _featureStats.keys.toList();
-
-  List<BarChartGroupData> _getFeatureBarGroups() {
-    final entries = _featureStats.entries.toList();
-    return List.generate(entries.length, (index) {
-      return _makeBarData(index, entries[index].value.toDouble());
+  List<String> get _featureRows {
+    final names = <String>{
+      ..._featureStats.keys,
+      ..._dailyFeatureStats.keys,
+    }.toList();
+    names.sort((a, b) {
+      final todayCompare = (_dailyFeatureStats[b] ?? 0).compareTo(
+        _dailyFeatureStats[a] ?? 0,
+      );
+      if (todayCompare != 0) return todayCompare;
+      return (_featureStats[b] ?? 0).compareTo(_featureStats[a] ?? 0);
     });
+    return names;
   }
 
   String _featureDisplayName(String featureName) {
@@ -233,17 +221,63 @@ class _UsageChartWidgetState extends State<UsageChartWidget> {
     );
   }
 
-  BarChartGroupData _makeBarData(int x, double y) {
-    return BarChartGroupData(
-      x: x,
-      barRods: [
-        BarChartRodData(
-          toY: y,
-          color: const Color(0xFF6B5EA8),
-          width: 20,
-          borderRadius: BorderRadius.circular(4),
-        ),
-      ],
+  Widget _buildFeatureRow(String featureName) {
+    final today = _dailyFeatureStats[featureName] ?? 0;
+    final total = _featureStats[featureName] ?? 0;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F6FF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE8E0FF)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              _featureDisplayName(featureName),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+          ),
+          _buildCountPill('오늘', today, const Color(0xFF6B5EA8)),
+          const SizedBox(width: 8),
+          _buildCountPill('누적', total, const Color(0xFF8F8A9F)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCountPill(String label, int count, Color color) {
+    return Container(
+      width: 86,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: color.withValues(alpha: 0.72),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '$count회',
+            style: TextStyle(
+              color: color,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
