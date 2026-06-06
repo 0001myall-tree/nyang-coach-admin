@@ -64,13 +64,32 @@ class AdminService {
   }
 
   static Map<String, int> _readUsageMap(Map<String, dynamic> data, String key) {
-    final value = data[key];
-    if (value is! Map) return {};
+    final Map<String, int> result = {};
 
-    return value.map((coachId, usageValue) {
-      final usageCount = usageValue is num ? usageValue.toInt() : 0;
-      return MapEntry(coachId.toString(), usageCount);
-    })..removeWhere((_, usageCount) => usageCount <= 0);
+    // 1. 기존 올바른 맵 형태인 경우 파싱
+    final value = data[key];
+    if (value is Map) {
+      value.forEach((coachId, usageValue) {
+        final usageCount = usageValue is num ? usageValue.toInt() : 0;
+        if (usageCount > 0) {
+          result[coachId.toString()] = usageCount;
+        }
+      });
+    }
+
+    // 2. 점 표기법(dot-notation) 오작동으로 루트 레벨에 저장된 경우 파싱 (예: "features.morning_call" 이나 "coachUsage.sec_male")
+    final prefix = '$key.';
+    data.forEach((k, v) {
+      if (k.startsWith(prefix)) {
+        final actualKey = k.substring(prefix.length);
+        final usageCount = v is num ? v.toInt() : 0;
+        if (usageCount > 0) {
+          result[actualKey] = (result[actualKey] ?? 0) + usageCount;
+        }
+      }
+    });
+
+    return result;
   }
 
   static Map<String, int> _mergeUsageMaps(Iterable<Map<String, int>> maps) {
@@ -170,16 +189,16 @@ class AdminService {
         if (dailyDoc.exists) {
           final dailyData = dailyDoc.data();
           if (dailyData != null) {
-            final coachUsage = dailyData['coachUsage'];
-            if (coachUsage is Map && coachUsage.isNotEmpty) {
+            final coachUsage = _readUsageMap(dailyData, 'coachUsage');
+            if (coachUsage.isNotEmpty) {
               // 가장 많이 대화한 코치 찾기
               String? topCoachId;
               int maxCount = -1;
               coachUsage.forEach((k, v) {
-                final count = v is num ? v.toInt() : 0;
+                final count = v;
                 if (count > maxCount) {
                   maxCount = count;
-                  topCoachId = k.toString();
+                  topCoachId = k;
                 }
               });
               if (topCoachId != null && maxCount > 0) {
@@ -241,13 +260,10 @@ class AdminService {
         final data = dailyDoc.data();
         if (data == null) return;
 
-        final features = data['features'];
-        if (features is! Map) return;
-
+        final features = _readUsageMap(data, 'features');
         features.forEach((key, value) {
-          final count = value is num ? value.toInt() : 0;
-          if (count > 0) {
-            stats[key.toString()] = (stats[key.toString()] ?? 0) + count;
+          if (value > 0) {
+            stats[key] = (stats[key] ?? 0) + value;
           }
         });
       }),
