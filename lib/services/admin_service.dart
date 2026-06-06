@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static const double _krwPerUsd = 1400;
+  static const double _geminiFlashLiteOutputUsdPerMillionTokens = 0.40;
 
   static String _dateKey(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -32,6 +34,26 @@ class AdminService {
       if (text.isNotEmpty) return text;
     }
     return '';
+  }
+
+  static int _estimateCostWonFromTokens(int tokenCount) {
+    if (tokenCount <= 0) return 0;
+    final usdCost =
+        tokenCount / 1000000 * _geminiFlashLiteOutputUsdPerMillionTokens;
+    return (usdCost * _krwPerUsd).round();
+  }
+
+  static int _normaliseCostWon({
+    required int storedCostWon,
+    required int tokenCount,
+  }) {
+    final estimatedCostWon = _estimateCostWonFromTokens(tokenCount);
+    if (tokenCount <= 0) return storedCostWon;
+    if (storedCostWon <= 0) return estimatedCostWon;
+    if (estimatedCostWon > 0 && storedCostWon > estimatedCostWon * 2) {
+      return estimatedCostWon;
+    }
+    return storedCostWon;
   }
 
   // 전체 유저 수 가져오기
@@ -111,7 +133,10 @@ class AdminService {
 
     return {
       'totalTokens': _readInt(data, 'totalTokens'),
-      'totalCostWon': _readInt(data, 'totalCostWon'),
+      'totalCostWon': _normaliseCostWon(
+        storedCostWon: _readInt(data, 'totalCostWon'),
+        tokenCount: _readInt(data, 'totalTokens'),
+      ),
       'apiCallCount': _readInt(data, 'apiCallCount') > 0
           ? _readInt(data, 'apiCallCount')
           : _readInt(data, 'chatCount'),
@@ -132,7 +157,10 @@ class AdminService {
 
     return {
       'totalTokens': _readInt(data, 'totalTokens'),
-      'totalCostWon': _readInt(data, 'totalCostWon'),
+      'totalCostWon': _normaliseCostWon(
+        storedCostWon: _readInt(data, 'totalCostWon'),
+        tokenCount: _readInt(data, 'totalTokens'),
+      ),
       'apiCallCount': _readInt(data, 'apiCallCount'),
     };
   }
@@ -225,7 +253,20 @@ class AdminService {
         final activeDays = activeDates is List ? activeDates.length : 0;
 
         final totalUserMessages = _readInt(summary, 'totalUserMessages');
-        final totalCostWon = _readInt(summary, 'totalCostWon');
+        final todayTokens = _readInt(daily, 'totalTokens');
+        final totalTokens = _readInt(summary, 'totalTokens');
+        final todayCostWon = _normaliseCostWon(
+          storedCostWon: _readInt(daily, 'totalCostWon'),
+          tokenCount: todayTokens,
+        );
+        final totalCostWon = _normaliseCostWon(
+          storedCostWon: _readInt(summary, 'totalCostWon'),
+          tokenCount: totalTokens,
+        );
+
+        final summaryFeatures =
+            summary['features'] as Map<String, dynamic>? ?? {};
+        final dailyFeatures = daily['features'] as Map<String, dynamic>? ?? {};
 
         return {
           'uid': uid,
@@ -250,10 +291,25 @@ class AdminService {
           'localReplies': _readInt(summary, 'localReplies'),
           'todayApiCalls': _readInt(daily, 'apiCallCount'),
           'apiCallCount': _readInt(summary, 'apiCallCount'),
-          'todayTokens': _readInt(daily, 'totalTokens'),
-          'totalTokens': _readInt(summary, 'totalTokens'),
-          'todayCostWon': _readInt(daily, 'totalCostWon'),
+          'todayTokens': todayTokens,
+          'totalTokens': totalTokens,
+          'todayCostWon': todayCostWon,
           'totalCostWon': totalCostWon,
+          'featCoreRecToday': _readInt(dailyFeatures, 'cheat_core_recommend'),
+          'featCoreRecTotal': _readInt(summaryFeatures, 'cheat_core_recommend'),
+          'featScheduleToday': _readInt(dailyFeatures, 'cheat_schedule_escort'),
+          'featScheduleTotal': _readInt(
+            summaryFeatures,
+            'cheat_schedule_escort',
+          ),
+          'featVisionToday': _readInt(dailyFeatures, 'cheat_today_vision'),
+          'featVisionTotal': _readInt(summaryFeatures, 'cheat_today_vision'),
+          'featMorningToday': _readInt(dailyFeatures, 'morning_call'),
+          'featMorningTotal': _readInt(summaryFeatures, 'morning_call'),
+          'featNightToday': _readInt(dailyFeatures, 'night_call'),
+          'featNightTotal': _readInt(summaryFeatures, 'night_call'),
+          'featReminderToday': _readInt(dailyFeatures, 'core_reminder'),
+          'featReminderTotal': _readInt(summaryFeatures, 'core_reminder'),
           'avgMessagesSinceJoin': daysSinceJoined > 0
               ? totalUserMessages / daysSinceJoined
               : 0,

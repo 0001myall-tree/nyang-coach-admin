@@ -113,6 +113,12 @@ class _TesterUsageWidgetState extends State<TesterUsageWidget> {
                             DataColumn(label: Text('코치')),
                             DataColumn(label: Text('가입 후')),
                             DataColumn(label: Text('사용일수')),
+                            DataColumn(label: Text('오늘 핵심 추천(오늘/누적)')),
+                            DataColumn(label: Text('일정 에스코트(오늘/누적)')),
+                            DataColumn(label: Text('비전 오늘(오늘/누적)')),
+                            DataColumn(label: Text('모닝콜(오늘/누적)')),
+                            DataColumn(label: Text('나이트콜(오늘/누적)')),
+                            DataColumn(label: Text('리마인더(오늘/누적)')),
                             DataColumn(label: Text('오늘 메시지')),
                             DataColumn(label: Text('누적 메시지')),
                             DataColumn(label: Text('오늘 API/로컬')),
@@ -149,6 +155,36 @@ class _TesterUsageWidgetState extends State<TesterUsageWidget> {
         DataCell(Text(_coachLabel(row['coachId']))),
         DataCell(Text(_daysLabel(row['daysSinceJoined']))),
         DataCell(Text(_daysLabel(row['activeDays']))),
+        DataCell(
+          Text(
+            '${_int(row['featCoreRecToday'])} / ${_int(row['featCoreRecTotal'])}',
+          ),
+        ),
+        DataCell(
+          Text(
+            '${_int(row['featScheduleToday'])} / ${_int(row['featScheduleTotal'])}',
+          ),
+        ),
+        DataCell(
+          Text(
+            '${_int(row['featVisionToday'])} / ${_int(row['featVisionTotal'])}',
+          ),
+        ),
+        DataCell(
+          Text(
+            '${_int(row['featMorningToday'])} / ${_int(row['featMorningTotal'])}',
+          ),
+        ),
+        DataCell(
+          Text(
+            '${_int(row['featNightToday'])} / ${_int(row['featNightTotal'])}',
+          ),
+        ),
+        DataCell(
+          Text(
+            '${_int(row['featReminderToday'])} / ${_int(row['featReminderTotal'])}',
+          ),
+        ),
         DataCell(Text('${_int(row['todayUserMessages'])}회')),
         DataCell(
           Text(

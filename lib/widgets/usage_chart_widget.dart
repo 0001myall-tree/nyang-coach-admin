@@ -204,6 +204,12 @@ class _UsageChartWidgetState extends State<UsageChartWidget> {
         return 'AI 채팅';
       case 'tasks':
         return '할일';
+      case 'cheat_core_recommend':
+        return '오늘 핵심 추천';
+      case 'cheat_schedule_escort':
+        return '일정 에스코트';
+      case 'cheat_today_vision':
+        return '비전을 위한 오늘';
       default:
         return featureName;
     }

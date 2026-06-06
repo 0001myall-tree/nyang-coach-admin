@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/admin_service.dart';
+import 'tester_usage_widget.dart';
 
 class SummaryWidget extends StatefulWidget {
   const SummaryWidget({super.key});
@@ -139,35 +140,12 @@ class _SummaryWidgetState extends State<SummaryWidget> {
               '예상 API 비용 / 테스터',
               '${_formatNumber(costPerTester)} 원',
               Icons.payments_outlined,
-              subtitle: '총 ${_formatNumber(_totalCostWon)}원',
+              subtitle: '총 ${_formatNumber(_totalCostWon)}원 / $_totalUsers명 기준',
             ),
           ],
         ),
         const SizedBox(height: 48),
-        // 추가적인 그래프가 들어갈 자리
-        Expanded(
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: const Center(
-              child: Text(
-                '상세 재방문률 차트 영역',
-                style: TextStyle(color: Colors.grey, fontSize: 16),
-              ),
-            ),
-          ),
-        ),
+        const Expanded(child: TesterUsageWidget()),
       ],
     );
   }
@@ -199,7 +177,7 @@ class _SummaryWidgetState extends State<SummaryWidget> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
