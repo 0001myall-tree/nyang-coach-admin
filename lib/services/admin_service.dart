@@ -26,6 +26,14 @@ class AdminService {
     return value?.toString() ?? '';
   }
 
+  static String _firstNonEmptyString(List<dynamic> values) {
+    for (final value in values) {
+      final text = value?.toString().trim() ?? '';
+      if (text.isNotEmpty) return text;
+    }
+    return '';
+  }
+
   // 전체 유저 수 가져오기
   static Future<int> getTotalUsers() async {
     final snapshot = await _firestore.collection('users').count().get();
@@ -221,9 +229,13 @@ class AdminService {
 
         return {
           'uid': uid,
-          'email': _readString(summary, 'email').isNotEmpty
-              ? _readString(summary, 'email')
-              : _readString(userDocData, 'email'),
+          'email': _firstNonEmptyString([
+            summary['email'],
+            daily['email'],
+            userDocData['email'],
+            userDocData['loginEmail'],
+            userDataMap['email'],
+          ]),
           'coachId': _readString(userDataMap, 'selected_coach_id'),
           'planType': _readString(userDataMap, 'plan_type'),
           'joinedAt': joinedAt,

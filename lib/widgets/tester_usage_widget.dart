@@ -108,7 +108,7 @@ class _TesterUsageWidgetState extends State<TesterUsageWidget> {
                           ),
                           columnSpacing: 28,
                           columns: const [
-                            DataColumn(label: Text('테스터')),
+                            DataColumn(label: Text('접속 이메일')),
                             DataColumn(label: Text('플랜')),
                             DataColumn(label: Text('코치')),
                             DataColumn(label: Text('가입 후')),
