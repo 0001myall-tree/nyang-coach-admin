@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -12,6 +13,15 @@ void main() async {
   runApp(const NyangAdminApp());
 }
 
+class MyCustomScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+      };
+}
+
 class NyangAdminApp extends StatelessWidget {
   const NyangAdminApp({super.key});
 
@@ -19,6 +29,7 @@ class NyangAdminApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: '냥냥코치 어드민',
+      scrollBehavior: MyCustomScrollBehavior(),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6B5EA8)),
         textTheme: GoogleFonts.notoSansKrTextTheme(Theme.of(context).textTheme),

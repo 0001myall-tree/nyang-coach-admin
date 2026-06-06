@@ -128,18 +128,78 @@ class AdminService {
     return snapshot.docs.where((doc) => doc.id.startsWith('dau_')).length;
   }
 
-  // 코치별 사용 비율 가져오기
+  // 코치별 사용 비율 가져오기 (각 사용자별 그날 가장 많이 사용한 코치 1표씩 집계하여 당일 문서 캐싱)
   static Future<Map<String, int>> getCoachUsageStats() async {
-    final snapshot = await _firestore.collection('users').get();
-    final Map<String, int> coachStats = {};
+    final todayStr = _dateKey(DateTime.now());
+    final cacheDocRef = _firestore
+        .collection('analytics')
+        .doc('coach_usage_daily_$todayStr');
 
-    for (var doc in snapshot.docs) {
-      final data = doc.data();
-      final userData = data['userData'];
-      final coachId = userData is Map
-          ? userData['selected_coach_id'] as String? ?? 'unknown'
-          : 'unknown';
-      coachStats[coachId] = (coachStats[coachId] ?? 0) + 1;
+    try {
+      final cacheDoc = await cacheDocRef.get();
+      if (cacheDoc.exists) {
+        final cacheData = cacheDoc.data();
+        if (cacheData != null && cacheData['stats'] is Map) {
+          final statsMap = cacheData['stats'] as Map;
+          return statsMap.map((k, v) => MapEntry(k.toString(), v is num ? v.toInt() : 0));
+        }
+      }
+    } catch (e) {
+      // 캐시 읽기 실패 시 실시간 집계로 대체
+      print('Failed to read daily coach usage cache: $e');
+    }
+
+    // 캐시가 없거나 오류가 난 경우: 사용자별로 그날 가장 많이 사용한 코치 집계
+    final Map<String, int> coachStats = {};
+    try {
+      final usersSnapshot = await _firestore.collection('users').get();
+      for (var userDoc in usersSnapshot.docs) {
+        final data = userDoc.data();
+        final userData = data['userData'];
+        final currentCoachId = userData is Map
+            ? userData['selected_coach_id'] as String? ?? 'unknown'
+            : 'unknown';
+
+        // 해당 사용자의 오늘 대화 기록 조회
+        final dailyDoc = await userDoc.reference
+            .collection('analytics_daily')
+            .doc(todayStr)
+            .get();
+
+        String selectedCoachId = currentCoachId;
+        if (dailyDoc.exists) {
+          final dailyData = dailyDoc.data();
+          if (dailyData != null) {
+            final coachUsage = dailyData['coachUsage'];
+            if (coachUsage is Map && coachUsage.isNotEmpty) {
+              // 가장 많이 대화한 코치 찾기
+              String? topCoachId;
+              int maxCount = -1;
+              coachUsage.forEach((k, v) {
+                final count = v is num ? v.toInt() : 0;
+                if (count > maxCount) {
+                  maxCount = count;
+                  topCoachId = k.toString();
+                }
+              });
+              if (topCoachId != null && maxCount > 0) {
+                selectedCoachId = topCoachId!;
+              }
+            }
+          }
+        }
+
+        coachStats[selectedCoachId] = (coachStats[selectedCoachId] ?? 0) + 1;
+      }
+
+      // 집계 완료 후 Firestore에 일별 캐시 저장 (오늘 데이터이므로 계속 덮어씀)
+      await cacheDocRef.set({
+        'date': todayStr,
+        'stats': coachStats,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Failed to aggregate daily coach usage: $e');
     }
 
     return coachStats;

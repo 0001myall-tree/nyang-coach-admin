@@ -13,6 +13,15 @@ class TesterUsageWidget extends StatefulWidget {
 class _TesterUsageWidgetState extends State<TesterUsageWidget> {
   List<Map<String, dynamic>> _rows = [];
   bool _isLoading = true;
+  final ScrollController _horizontalController = ScrollController();
+  final ScrollController _verticalController = ScrollController();
+
+  @override
+  void dispose() {
+    _horizontalController.dispose();
+    _verticalController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -98,43 +107,52 @@ class _TesterUsageWidgetState extends State<TesterUsageWidget> {
                     ),
                   )
                 : Scrollbar(
+                    controller: _verticalController,
                     thumbVisibility: true,
                     child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: SingleChildScrollView(
-                        child: DataTable(
-                          headingRowColor: WidgetStateProperty.all(
-                            const Color(0xFFF5F2FF),
+                      controller: _verticalController,
+                      scrollDirection: Axis.vertical,
+                      child: Scrollbar(
+                        controller: _horizontalController,
+                        thumbVisibility: true,
+                        notificationPredicate: (notif) => notif.depth == 0,
+                        child: SingleChildScrollView(
+                          controller: _horizontalController,
+                          scrollDirection: Axis.horizontal,
+                          child: DataTable(
+                            headingRowColor: WidgetStateProperty.all(
+                              const Color(0xFFF5F2FF),
+                            ),
+                            columnSpacing: 28,
+                            columns: const [
+                              DataColumn(label: Text('접속 이메일')),
+                              DataColumn(label: Text('플랜')),
+                              DataColumn(label: Text('오늘 최다 코치')),
+                              DataColumn(label: Text('최근 7일 최다 코치')),
+                              DataColumn(label: Text('가입 후')),
+                              DataColumn(label: Text('사용일수')),
+                              DataColumn(label: Text('오늘 메시지')),
+                              DataColumn(label: Text('누적 메시지')),
+                              DataColumn(label: Text('오늘 API/로컬')),
+                              DataColumn(label: Text('누적 API/로컬')),
+                              DataColumn(label: Text('오늘 API 호출')),
+                              DataColumn(label: Text('누적 API 호출')),
+                              DataColumn(label: Text('오늘 토큰')),
+                              DataColumn(label: Text('누적 토큰')),
+                              DataColumn(label: Text('오늘 비용')),
+                              DataColumn(label: Text('누적 비용')),
+                              DataColumn(label: Text('가입일 평균')),
+                              DataColumn(label: Text('사용일 평균')),
+                              DataColumn(label: Text('오늘 핵심 추천(오늘/누적)')),
+                              DataColumn(label: Text('일정 에스코트(오늘/누적)')),
+                              DataColumn(label: Text('비전 오늘(오늘/누적)')),
+                              DataColumn(label: Text('모닝콜(오늘/누적)')),
+                              DataColumn(label: Text('나이트콜(오늘/누적)')),
+                              DataColumn(label: Text('리마인더(오늘/누적)')),
+                              DataColumn(label: Text('마지막 접속')),
+                            ],
+                            rows: _rows.map(_buildRow).toList(),
                           ),
-                          columnSpacing: 28,
-                          columns: const [
-                            DataColumn(label: Text('접속 이메일')),
-                            DataColumn(label: Text('플랜')),
-                            DataColumn(label: Text('오늘 최다 코치')),
-                            DataColumn(label: Text('최근 7일 최다 코치')),
-                            DataColumn(label: Text('가입 후')),
-                            DataColumn(label: Text('사용일수')),
-                            DataColumn(label: Text('오늘 메시지')),
-                            DataColumn(label: Text('누적 메시지')),
-                            DataColumn(label: Text('오늘 API/로컬')),
-                            DataColumn(label: Text('누적 API/로컬')),
-                            DataColumn(label: Text('오늘 API 호출')),
-                            DataColumn(label: Text('누적 API 호출')),
-                            DataColumn(label: Text('오늘 토큰')),
-                            DataColumn(label: Text('누적 토큰')),
-                            DataColumn(label: Text('오늘 비용')),
-                            DataColumn(label: Text('누적 비용')),
-                            DataColumn(label: Text('가입일 평균')),
-                            DataColumn(label: Text('사용일 평균')),
-                            DataColumn(label: Text('오늘 핵심 추천(오늘/누적)')),
-                            DataColumn(label: Text('일정 에스코트(오늘/누적)')),
-                            DataColumn(label: Text('비전 오늘(오늘/누적)')),
-                            DataColumn(label: Text('모닝콜(오늘/누적)')),
-                            DataColumn(label: Text('나이트콜(오늘/누적)')),
-                            DataColumn(label: Text('리마인더(오늘/누적)')),
-                            DataColumn(label: Text('마지막 접속')),
-                          ],
-                          rows: _rows.map(_buildRow).toList(),
                         ),
                       ),
                     ),
@@ -171,13 +189,7 @@ class _TesterUsageWidgetState extends State<TesterUsageWidget> {
         DataCell(Text(_daysLabel(row['daysSinceJoined']))),
         DataCell(Text(_daysLabel(row['activeDays']))),
         DataCell(Text('${_int(row['todayUserMessages'])}회')),
-        DataCell(
-          Text(
-            '${_formatNumber(_int(row['totalUserMessages']))}회\n'
-            '가입일 ${_decimal(row['avgMessagesSinceJoin'])}회/일\n'
-            '사용일 ${_decimal(row['avgMessagesPerActiveDay'])}회/일',
-          ),
-        ),
+        DataCell(Text('${_formatNumber(_int(row['totalUserMessages']))}회')),
         DataCell(
           Text(
             '${_int(row['todayApiReplies'])} / ${_int(row['todayLocalReplies'])}',
