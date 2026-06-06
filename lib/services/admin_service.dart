@@ -9,6 +9,13 @@ class AdminService {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
+  static List<String> _recentDateKeys(DateTime date, int dayCount) {
+    return List.generate(
+      dayCount,
+      (index) => _dateKey(date.subtract(Duration(days: index))),
+    );
+  }
+
   static int _readInt(Map<String, dynamic> data, String key) {
     final value = data[key];
     if (value is int) return value;
@@ -64,6 +71,16 @@ class AdminService {
       final usageCount = usageValue is num ? usageValue.toInt() : 0;
       return MapEntry(coachId.toString(), usageCount);
     })..removeWhere((_, usageCount) => usageCount <= 0);
+  }
+
+  static Map<String, int> _mergeUsageMaps(Iterable<Map<String, int>> maps) {
+    final merged = <String, int>{};
+    for (final usageMap in maps) {
+      for (final entry in usageMap.entries) {
+        merged[entry.key] = (merged[entry.key] ?? 0) + entry.value;
+      }
+    }
+    return merged;
   }
 
   static Map<String, dynamic> _topCoachUsage(Map<String, int> usage) {
@@ -272,7 +289,9 @@ class AdminService {
 
   // 테스터별 누적/일별 사용량 가져오기
   static Future<List<Map<String, dynamic>>> getTesterUsageStats() async {
-    final todayStr = _dateKey(DateTime.now());
+    final now = DateTime.now();
+    final todayStr = _dateKey(now);
+    final recentDateKeys = _recentDateKeys(now, 7);
     final usersSnapshot = await _firestore.collection('users').get();
 
     final rows = await Future.wait(
@@ -288,17 +307,24 @@ class AdminService {
             .collection('analytics')
             .doc('summary')
             .get();
-        final dailyDoc = await userDoc.reference
-            .collection('analytics_daily')
-            .doc(todayStr)
-            .get();
+        final recentDailyDocs = await Future.wait(
+          recentDateKeys.map(
+            (dateKey) => userDoc.reference
+                .collection('analytics_daily')
+                .doc(dateKey)
+                .get(),
+          ),
+        );
 
         final summary = summaryDoc.data() ?? <String, dynamic>{};
-        final daily = dailyDoc.data() ?? <String, dynamic>{};
+        final todayDailyDoc = recentDailyDocs.firstWhere(
+          (doc) => doc.id == todayStr,
+        );
+        final daily = todayDailyDoc.data() ?? <String, dynamic>{};
         final joinedAt = _readDateTime(summary, 'joinedAt');
         final activeDates = summary['activeDates'];
 
-        final today = DateTime.now();
+        final today = now;
         final joinedDay = joinedAt == null
             ? null
             : DateTime(joinedAt.year, joinedAt.month, joinedAt.day);
@@ -327,8 +353,15 @@ class AdminService {
         final todayTopCoach = _topCoachUsage(
           _readUsageMap(daily, 'coachUsage'),
         );
-        final totalTopCoach = _topCoachUsage(
-          _readUsageMap(summary, 'coachUsage'),
+        final weeklyTopCoach = _topCoachUsage(
+          _mergeUsageMaps(
+            recentDailyDocs.map(
+              (doc) => _readUsageMap(
+                doc.data() ?? <String, dynamic>{},
+                'coachUsage',
+              ),
+            ),
+          ),
         );
 
         return {
@@ -342,8 +375,8 @@ class AdminService {
           ]),
           'todayTopCoachId': todayTopCoach['coachId'],
           'todayTopCoachCount': todayTopCoach['count'],
-          'totalTopCoachId': totalTopCoach['coachId'],
-          'totalTopCoachCount': totalTopCoach['count'],
+          'weeklyTopCoachId': weeklyTopCoach['coachId'],
+          'weeklyTopCoachCount': weeklyTopCoach['count'],
           'planType': _readString(userDataMap, 'plan_type'),
           'joinedAt': joinedAt,
           'lastActiveAt': _readDateTime(summary, 'lastActiveAt'),

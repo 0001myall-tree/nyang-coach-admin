@@ -111,7 +111,7 @@ class _TesterUsageWidgetState extends State<TesterUsageWidget> {
                             DataColumn(label: Text('접속 이메일')),
                             DataColumn(label: Text('플랜')),
                             DataColumn(label: Text('오늘 최다 코치')),
-                            DataColumn(label: Text('누적 최다 코치')),
+                            DataColumn(label: Text('최근 7일 최다 코치')),
                             DataColumn(label: Text('가입 후')),
                             DataColumn(label: Text('사용일수')),
                             DataColumn(label: Text('오늘 메시지')),
@@ -162,7 +162,10 @@ class _TesterUsageWidgetState extends State<TesterUsageWidget> {
         ),
         DataCell(
           Text(
-            _coachUsageLabel(row['totalTopCoachId'], row['totalTopCoachCount']),
+            _coachUsageLabel(
+              row['weeklyTopCoachId'],
+              row['weeklyTopCoachCount'],
+            ),
           ),
         ),
         DataCell(Text(_daysLabel(row['daysSinceJoined']))),
@@ -240,8 +243,10 @@ class _TesterUsageWidgetState extends State<TesterUsageWidget> {
         return '냥냥';
       case 'boyfriend':
         return '남친';
+      case 'sec_male':
       case 'secretary_male':
         return '남비서';
+      case 'sec_female':
       case 'secretary_female':
         return '여비서';
       default:
