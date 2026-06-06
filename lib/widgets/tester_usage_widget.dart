@@ -110,7 +110,8 @@ class _TesterUsageWidgetState extends State<TesterUsageWidget> {
                           columns: const [
                             DataColumn(label: Text('접속 이메일')),
                             DataColumn(label: Text('플랜')),
-                            DataColumn(label: Text('현재 선택 코치')),
+                            DataColumn(label: Text('오늘 최다 코치')),
+                            DataColumn(label: Text('누적 최다 코치')),
                             DataColumn(label: Text('가입 후')),
                             DataColumn(label: Text('사용일수')),
                             DataColumn(label: Text('오늘 메시지')),
@@ -154,7 +155,16 @@ class _TesterUsageWidgetState extends State<TesterUsageWidget> {
           ),
         ),
         DataCell(Text(_plainLabel(row['planType']))),
-        DataCell(Text(_coachLabel(row['coachId']))),
+        DataCell(
+          Text(
+            _coachUsageLabel(row['todayTopCoachId'], row['todayTopCoachCount']),
+          ),
+        ),
+        DataCell(
+          Text(
+            _coachUsageLabel(row['totalTopCoachId'], row['totalTopCoachCount']),
+          ),
+        ),
         DataCell(Text(_daysLabel(row['daysSinceJoined']))),
         DataCell(Text(_daysLabel(row['activeDays']))),
         DataCell(Text('${_int(row['todayUserMessages'])}회')),
@@ -224,6 +234,8 @@ class _TesterUsageWidgetState extends State<TesterUsageWidget> {
 
   String _coachLabel(dynamic value) {
     switch (value?.toString()) {
+      case 'cat':
+        return '냥냥';
       case 'nyang':
         return '냥냥';
       case 'boyfriend':
@@ -235,6 +247,12 @@ class _TesterUsageWidgetState extends State<TesterUsageWidget> {
       default:
         return _plainLabel(value);
     }
+  }
+
+  String _coachUsageLabel(dynamic coachId, dynamic count) {
+    final usageCount = _int(count);
+    if (usageCount <= 0) return '-';
+    return '${_coachLabel(coachId)} $usageCount회';
   }
 
   String _plainLabel(dynamic value) {

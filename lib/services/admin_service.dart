@@ -56,6 +56,32 @@ class AdminService {
     return storedCostWon;
   }
 
+  static Map<String, int> _readUsageMap(Map<String, dynamic> data, String key) {
+    final value = data[key];
+    if (value is! Map) return {};
+
+    return value.map((coachId, usageValue) {
+      final usageCount = usageValue is num ? usageValue.toInt() : 0;
+      return MapEntry(coachId.toString(), usageCount);
+    })..removeWhere((_, usageCount) => usageCount <= 0);
+  }
+
+  static Map<String, dynamic> _topCoachUsage(Map<String, int> usage) {
+    if (usage.isEmpty) {
+      return {'coachId': '', 'count': 0};
+    }
+
+    final entries = usage.entries.toList()
+      ..sort((a, b) {
+        final countCompare = b.value.compareTo(a.value);
+        if (countCompare != 0) return countCompare;
+        return a.key.compareTo(b.key);
+      });
+
+    final top = entries.first;
+    return {'coachId': top.key, 'count': top.value};
+  }
+
   // 전체 유저 수 가져오기
   static Future<int> getTotalUsers() async {
     final snapshot = await _firestore.collection('users').count().get();
@@ -298,6 +324,13 @@ class AdminService {
             summary['features'] as Map<String, dynamic>? ?? {};
         final dailyFeatures = daily['features'] as Map<String, dynamic>? ?? {};
 
+        final todayTopCoach = _topCoachUsage(
+          _readUsageMap(daily, 'coachUsage'),
+        );
+        final totalTopCoach = _topCoachUsage(
+          _readUsageMap(summary, 'coachUsage'),
+        );
+
         return {
           'uid': uid,
           'email': _firstNonEmptyString([
@@ -307,7 +340,10 @@ class AdminService {
             userDocData['loginEmail'],
             userDataMap['email'],
           ]),
-          'coachId': _readString(userDataMap, 'selected_coach_id'),
+          'todayTopCoachId': todayTopCoach['coachId'],
+          'todayTopCoachCount': todayTopCoach['count'],
+          'totalTopCoachId': totalTopCoach['coachId'],
+          'totalTopCoachCount': totalTopCoach['count'],
           'planType': _readString(userDataMap, 'plan_type'),
           'joinedAt': joinedAt,
           'lastActiveAt': _readDateTime(summary, 'lastActiveAt'),
