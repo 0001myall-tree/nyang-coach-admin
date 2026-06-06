@@ -110,7 +110,7 @@ class _TesterUsageWidgetState extends State<TesterUsageWidget> {
                           columns: const [
                             DataColumn(label: Text('접속 이메일')),
                             DataColumn(label: Text('플랜')),
-                            DataColumn(label: Text('코치')),
+                            DataColumn(label: Text('현재 선택 코치')),
                             DataColumn(label: Text('가입 후')),
                             DataColumn(label: Text('사용일수')),
                             DataColumn(label: Text('오늘 메시지')),
