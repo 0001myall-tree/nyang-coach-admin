@@ -14,6 +14,18 @@ class AdminService {
     return 0;
   }
 
+  static DateTime? _readDateTime(Map<String, dynamic> data, String key) {
+    final value = data[key];
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    return null;
+  }
+
+  static String _readString(Map<String, dynamic> data, String key) {
+    final value = data[key];
+    return value?.toString() ?? '';
+  }
+
   // 전체 유저 수 가져오기
   static Future<int> getTotalUsers() async {
     final snapshot = await _firestore.collection('users').count().get();
@@ -164,6 +176,93 @@ class AdminService {
       'apiReplies': _readInt(data, 'apiReplies'),
       'localReplies': _readInt(data, 'localReplies'),
     };
+  }
+
+  // 테스터별 누적/일별 사용량 가져오기
+  static Future<List<Map<String, dynamic>>> getTesterUsageStats() async {
+    final todayStr = _dateKey(DateTime.now());
+    final usersSnapshot = await _firestore.collection('users').get();
+
+    final rows = await Future.wait(
+      usersSnapshot.docs.map((userDoc) async {
+        final uid = userDoc.id;
+        final userDocData = userDoc.data();
+        final userData = userDocData['userData'];
+        final userDataMap = userData is Map
+            ? Map<String, dynamic>.from(userData)
+            : <String, dynamic>{};
+
+        final summaryDoc = await userDoc.reference
+            .collection('analytics')
+            .doc('summary')
+            .get();
+        final dailyDoc = await userDoc.reference
+            .collection('analytics_daily')
+            .doc(todayStr)
+            .get();
+
+        final summary = summaryDoc.data() ?? <String, dynamic>{};
+        final daily = dailyDoc.data() ?? <String, dynamic>{};
+        final joinedAt = _readDateTime(summary, 'joinedAt');
+        final activeDates = summary['activeDates'];
+
+        final today = DateTime.now();
+        final joinedDay = joinedAt == null
+            ? null
+            : DateTime(joinedAt.year, joinedAt.month, joinedAt.day);
+        final todayDay = DateTime(today.year, today.month, today.day);
+        final daysSinceJoined = joinedDay == null
+            ? 0
+            : todayDay.difference(joinedDay).inDays + 1;
+        final activeDays = activeDates is List ? activeDates.length : 0;
+
+        final totalUserMessages = _readInt(summary, 'totalUserMessages');
+        final totalCostWon = _readInt(summary, 'totalCostWon');
+
+        return {
+          'uid': uid,
+          'email': _readString(summary, 'email').isNotEmpty
+              ? _readString(summary, 'email')
+              : _readString(userDocData, 'email'),
+          'coachId': _readString(userDataMap, 'selected_coach_id'),
+          'planType': _readString(userDataMap, 'plan_type'),
+          'joinedAt': joinedAt,
+          'lastActiveAt': _readDateTime(summary, 'lastActiveAt'),
+          'daysSinceJoined': daysSinceJoined,
+          'activeDays': activeDays,
+          'todayUserMessages': _readInt(daily, 'totalUserMessages'),
+          'totalUserMessages': totalUserMessages,
+          'todayApiReplies': _readInt(daily, 'apiReplies'),
+          'todayLocalReplies': _readInt(daily, 'localReplies'),
+          'apiReplies': _readInt(summary, 'apiReplies'),
+          'localReplies': _readInt(summary, 'localReplies'),
+          'todayApiCalls': _readInt(daily, 'apiCallCount'),
+          'apiCallCount': _readInt(summary, 'apiCallCount'),
+          'todayTokens': _readInt(daily, 'totalTokens'),
+          'totalTokens': _readInt(summary, 'totalTokens'),
+          'todayCostWon': _readInt(daily, 'totalCostWon'),
+          'totalCostWon': totalCostWon,
+          'avgMessagesSinceJoin': daysSinceJoined > 0
+              ? totalUserMessages / daysSinceJoined
+              : 0,
+          'avgMessagesPerActiveDay': activeDays > 0
+              ? totalUserMessages / activeDays
+              : 0,
+          'avgCostSinceJoin': daysSinceJoined > 0
+              ? totalCostWon / daysSinceJoined
+              : 0,
+          'avgCostPerActiveDay': activeDays > 0 ? totalCostWon / activeDays : 0,
+        };
+      }),
+    );
+
+    rows.sort((a, b) {
+      final bMessages = b['totalUserMessages'] as int? ?? 0;
+      final aMessages = a['totalUserMessages'] as int? ?? 0;
+      return bMessages.compareTo(aMessages);
+    });
+
+    return rows;
   }
 
   // 최근 타임라인 가져오기 (가장 최근 20개)
