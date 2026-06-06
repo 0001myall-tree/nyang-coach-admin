@@ -198,6 +198,8 @@ class _UsageChartWidgetState extends State<UsageChartWidget> {
         return '일정 에스코트';
       case 'cheat_today_vision':
         return '비전을 위한 오늘';
+      case 'move_task':
+        return '다른 날짜로 이동';
       default:
         return featureName;
     }
