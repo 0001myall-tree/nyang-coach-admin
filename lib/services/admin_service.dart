@@ -422,9 +422,8 @@ class AdminService {
           tokenCount: totalTokens,
         );
 
-        final summaryFeatures =
-            summary['features'] as Map<String, dynamic>? ?? {};
-        final dailyFeatures = daily['features'] as Map<String, dynamic>? ?? {};
+        final summaryFeatures = _readUsageMap(summary, 'features');
+        final dailyFeatures = _readUsageMap(daily, 'features');
 
         final todayTopCoach = _topCoachUsage(
           _readUsageMap(daily, 'coachUsage'),
