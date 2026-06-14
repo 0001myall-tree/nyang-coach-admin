@@ -150,6 +150,7 @@ class _TesterUsageWidgetState extends State<TesterUsageWidget> {
                               DataColumn(label: Text('나이트콜(오늘/누적)')),
                               DataColumn(label: Text('리마인더(오늘/누적)')),
                               DataColumn(label: Text('다른 날짜로 이동(오늘/누적)')),
+                              DataColumn(label: Text('메모 정리(오늘/누적)')),
                               DataColumn(label: Text('마지막 접속')),
                             ],
                             rows: _rows.map(_buildRow).toList(),
@@ -240,6 +241,11 @@ class _TesterUsageWidgetState extends State<TesterUsageWidget> {
         DataCell(
           Text(
             '${_int(row['featMoveTaskToday'])} / ${_int(row['featMoveTaskTotal'])}',
+          ),
+        ),
+        DataCell(
+          Text(
+            '${_int(row['featMemoOrgToday'])} / ${_int(row['featMemoOrgTotal'])}',
           ),
         ),
         DataCell(Text(_dateLabel(row['lastActiveAt']))),

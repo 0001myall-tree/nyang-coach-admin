@@ -486,6 +486,8 @@ class AdminService {
           'featReminderTotal': _readInt(summaryFeatures, 'core_reminder'),
           'featMoveTaskToday': _readInt(dailyFeatures, 'move_task'),
           'featMoveTaskTotal': _readInt(summaryFeatures, 'move_task'),
+          'featMemoOrgToday': _readInt(dailyFeatures, 'milestone_memo_organize'),
+          'featMemoOrgTotal': _readInt(summaryFeatures, 'milestone_memo_organize'),
           'avgMessagesSinceJoin': daysSinceJoined > 0
               ? totalUserMessages / daysSinceJoined
               : 0,

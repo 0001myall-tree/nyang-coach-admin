@@ -200,6 +200,8 @@ class _UsageChartWidgetState extends State<UsageChartWidget> {
         return '비전을 위한 오늘';
       case 'move_task':
         return '다른 날짜로 이동';
+      case 'milestone_memo_organize':
+        return '메모 정리';
       default:
         return featureName;
     }
